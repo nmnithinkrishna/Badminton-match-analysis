@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "courtsense",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "courtsense",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "workflows": [
+    { "name": "analyse-match", "binding": "ANALYSE", "class_name": "AnalyseMatch" }
+  ],
+  "vars": {
+    "GEMINI_MODEL": "gemini-3.8-flash",
+    "GEMINI_FALLBACK_MODEL": "gemini-3.5-flash-lite",
+    "GEMINI_BASE_URL": "https://generativelanguage.googleapis.com",
+    "MEDIA_RESOLUTION": "MEDIA_RESOLUTION_LOW",
+    "MAX_UPLOAD_MB": "500",
+    "MAX_DURATION_S": "900",
+    "DAILY_CAP": "15",
+    "PAUSED": "false"
+  }
+}

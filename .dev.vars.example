@@ -1,0 +1,3 @@
+GEMINI_API_KEY=mock
+GEMINI_BASE_URL=http://localhost:8790
+# For the real API: set your key and delete the GEMINI_BASE_URL line.

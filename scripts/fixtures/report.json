@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "summary": {
+    "headline": "Solid defence, now turn more rallies into attacks",
+    "overall_note": "You moved well to the back court and kept the shuttle in play. Most lost rallies came from short lifts to the mid-court that let your opponent smash."
+  },
+  "video_quality": { "usable": true, "note": "Full court visible from behind the baseline." },
+  "rallies": [
+    { "start": "0:02", "end": "0:14", "estimated_winner": "me", "note": "Deep clear forced a weak return, you finished at the net.", "confidence": "medium" },
+    { "start": "0:18", "end": "0:31", "estimated_winner": "opponent", "note": "Short lift was smashed down the line.", "confidence": "medium" },
+    { "start": "0:36", "end": "0:52", "estimated_winner": "unclear", "note": "Long exchange of clears; end not clearly visible.", "confidence": "low" }
+  ],
+  "moments": [
+    { "time": "0:05", "kind": "strength", "label": "Great deep clear to the back line", "detail": "The clear reached the back tramlines and pushed your opponent off balance." },
+    { "time": "0:12", "kind": "strength", "label": "Quick net kill", "detail": "You moved in early and met the shuttle high above the tape." },
+    { "time": "0:22", "kind": "weakness", "label": "Lift landed mid-court", "detail": "The lift was short, giving your opponent an easy smash." },
+    { "time": "0:28", "kind": "tip", "label": "Recover to base after each shot", "detail": "You stayed at the front after the drop; get back to the centre." },
+    { "time": "0:44", "kind": "weakness", "label": "Late split step", "detail": "You landed after your opponent hit, so the first step was slow." }
+  ],
+  "strengths": [
+    { "title": "Deep clears", "explanation": "Your clears regularly reach the back of the court, buying time.", "evidence": ["0:05", "0:40"] }
+  ],
+  "weaknesses": [
+    { "title": "Short lifts", "explanation": "Lifts under pressure often land mid-court and get attacked.", "severity": "major", "evidence": ["0:22"] },
+    { "title": "Recovery to base", "explanation": "You sometimes stay where you hit instead of returning to the centre.", "severity": "moderate", "evidence": ["0:28", "0:44"] }
+  ],
+  "patterns": [
+    { "title": "Opponent targets your backhand corner", "explanation": "Several rallies start with a push to your backhand rear court.", "evidence": ["0:19", "0:37"] }
+  ],
+  "takeaways": [
+    { "title": "Lift higher and deeper", "explanation": "When under pressure, aim lifts to the back line so you have time to recover.", "evidence": ["0:22"] },
+    { "title": "Return to base every shot", "explanation": "After each shot, take two steps back to the centre before the opponent hits.", "evidence": ["0:28"] },
+    { "title": "Split step on their hit", "explanation": "Time a small hop so you land as your opponent strikes the shuttle.", "evidence": ["0:44"] }
+  ],
+  "drills": [
+    { "name": "Deep lift ladder", "how_to": "Partner feeds net drops; lift each one to land behind the doubles long service line. 3 sets of 20.", "why": "Fixes short lifts." },
+    { "name": "Shadow footwork to base", "how_to": "Shadow 6 corners, touching the centre between each. 5 rounds of 30 seconds.", "why": "Builds the habit of recovering to base." }
+  ],
+  "limitations": ["Shuttle is hard to see in some frames, so rally ends are estimated."],
+  "confidence_overall": "medium"
+}
