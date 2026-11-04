@@ -43,7 +43,12 @@ app.post("/api/analyses", async (c) => {
 
   const id = crypto.randomUUID().replaceAll("-", "");
   const mimeType = body.mimeType === "video/quicktime" ? "video/mov" : body.mimeType;
-  const uploadUrl = await startUpload(gemini(env), { sizeBytes: body.sizeBytes, mimeType, displayName: id });
+  const uploadUrl = await startUpload(gemini(env), {
+    sizeBytes: body.sizeBytes,
+    mimeType,
+    displayName: id,
+    origin: c.req.header("Origin") ?? new URL(c.req.url).origin,
+  });
   const now = Date.now();
   await env.DB.prepare(
     `INSERT INTO analyses (id, state, player_description, size_bytes, mime_type, duration_s, upload_url, created_at, updated_at)

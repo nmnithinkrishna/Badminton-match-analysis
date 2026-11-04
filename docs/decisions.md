@@ -25,4 +25,12 @@ Facts checked against official docs on 2026-11-03.
 - Gemini API terms require users to be 18+ and forbid apps likely to be used by under-18s. Consent text says 18+.
 - Free-tier Gemini data may be used to improve Google products and seen by human reviewers. Move to a paid key
   before real users / first payment.
-- Verify the direct upload URL works without the API key against the real API (mock allows it). Fallback exists.
+
+## Verified against the real API (2026-11-04)
+
+- Key works; `gemini-3.8-flash` and `gemini-3.5-flash-lite` are both listed with `generateContent`.
+- **Direct browser upload works without the API key**, tested from headless Chromium on another origin. The
+  upload URL is a bearer capability (no `key=` in it). One catch: Gemini adds `Access-Control-Allow-Origin` to
+  the final upload response **only if the resumable session was started with an `Origin` header**. Without it the
+  bytes upload but the browser sees a CORS error and would fall back to the proxy for nothing. The Worker now forwards
+  the browser's `Origin` when opening the session, and the mock copies this behaviour so e2e catches a regression.

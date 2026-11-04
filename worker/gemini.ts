@@ -34,7 +34,7 @@ async function check(res: Response, what: string): Promise<Response> {
 /** Starts a resumable upload session and returns the session upload URL. */
 export async function startUpload(
   cfg: GeminiConfig,
-  opts: { sizeBytes: number; mimeType: string; displayName: string },
+  opts: { sizeBytes: number; mimeType: string; displayName: string; origin?: string },
 ): Promise<string> {
   const res = await fetch(`${cfg.baseUrl}/upload/v1beta/files`, {
     method: "POST",
@@ -45,6 +45,9 @@ export async function startUpload(
       "X-Goog-Upload-Header-Content-Length": String(opts.sizeBytes),
       "X-Goog-Upload-Header-Content-Type": opts.mimeType,
       "Content-Type": "application/json",
+      // Gemini only adds Access-Control-Allow-Origin to the upload response if the session was opened with the
+      // browser's Origin. Without it the upload succeeds but the browser can't read the result (CORS error).
+      ...(opts.origin ? { Origin: opts.origin } : {}),
     },
     body: JSON.stringify({ file: { display_name: opts.displayName } }),
   });

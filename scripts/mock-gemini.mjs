@@ -42,6 +42,7 @@ createServer(async (req, res) => {
       size: Number(req.headers["x-goog-upload-header-content-length"]),
       mime: req.headers["x-goog-upload-header-content-type"],
       displayName: JSON.parse(text).file.display_name,
+      origin: req.headers.origin, // like the real API: upload responses only get CORS for this origin
     });
     return send(res, 200, {}, { "x-goog-upload-url": `http://localhost:${PORT}/upload-session/${id}` });
   }
@@ -54,7 +55,9 @@ createServer(async (req, res) => {
     const name = `files/mock${seq}${Date.now().toString(36)}`;
     const file = { name, displayName: s.displayName, uri: `http://localhost:${PORT}/v1beta/${name}`, mimeType: s.mime, sizeBytes: String(n), state: "PROCESSING", videoMetadata: { videoDuration: "60s" }, _t: Date.now() };
     files.set(name, file);
-    return send(res, 200, { file });
+    const { "access-control-allow-origin": _, ...rest } = cors;
+    res.writeHead(200, { "content-type": "application/json", ...rest, ...(s.origin ? { "access-control-allow-origin": s.origin } : {}) });
+    return res.end(JSON.stringify({ file }));
   }
   if (url.pathname.startsWith("/v1beta/files/")) {
     if (!req.headers["x-goog-api-key"]) return send(res, 401, { error: "no key" });
