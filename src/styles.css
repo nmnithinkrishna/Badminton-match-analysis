@@ -68,7 +68,8 @@ button, .button { font: inherit; cursor: pointer; }
 .player { padding: 10px; }
 .stage { position: relative; background: #000; border-radius: 10px; overflow: hidden; }
 .stage video { display: block; width: 100%; max-height: 70vh; }
-.stage canvas { position: absolute; inset: 0 0 48px 0; width: 100%; height: calc(100% - 48px); pointer-events: none; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.stage .tap { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 .row .primary { width: auto; flex: 1; }
 .list { padding-left: 20px; margin: 0; }
@@ -119,3 +120,15 @@ h3 { font-size: 15px; margin: 0 0 8px; }
 details.card summary { cursor: pointer; font-weight: 700; }
 details.card[open] summary { margin-bottom: 12px; }
 @media (max-width: 400px) { .glance { grid-template-columns: 1fr; } .score .side b { font-size: 36px; } }
+.track-cta { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--bg); }
+.track-cta p { margin: 2px 0 0; }
+.track-cta .primary { width: auto; }
+.row.tight { margin: 0; }
+.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.wide { flex: 1; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); margin-top: 8px; overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.mstats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mstats div { background: var(--bg); border-radius: 8px; padding: 6px 8px; }
+.mstats b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.mstats span { font-size: 11px; color: var(--muted); }

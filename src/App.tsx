@@ -3,6 +3,7 @@ import type { AnalysisState, Report } from "../shared/report";
 import { toSeconds } from "../shared/time";
 import { createAnalysis, getStatus, uploadVideo } from "./lib/api";
 import { BRAND, buildTimeline, drawOverlay, type Timeline } from "./lib/overlay";
+import type { Corners, Pt, Tracks } from "./lib/track";
 // The video toolkit is large; load it only when needed.
 const videoLib = () => import("./lib/video");
 
@@ -162,7 +163,9 @@ export function App() {
         </section>
       )}
 
-      {phase.kind === "result" && <Result report={phase.report} file={file} onPickFile={setFile} />}
+      {phase.kind === "result" && id && (
+        <Result id={id} report={phase.report} file={file} onPickFile={setFile} playerDescription={player} />
+      )}
     </main>
   );
 }
@@ -189,9 +192,32 @@ function Progress({ step, progress }: { step: string; progress?: number }) {
   );
 }
 
-function Result({ report, file, onPickFile }: { report: Report; file: File | null; onPickFile: (f: File) => void }) {
-  const tl = useMemo(() => (report.schema_version === 2 ? buildTimeline(report) : null), [report]);
+function Result({
+  id,
+  report,
+  file,
+  onPickFile,
+  playerDescription,
+}: {
+  id: string;
+  report: Report;
+  file: File | null;
+  onPickFile: (f: File) => void;
+  playerDescription: string;
+}) {
+  const baseTl = useMemo(() => (report.schema_version === 2 ? buildTimeline(report) : null), [report]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [tracks, setTracks] = useState<Tracks | null>(null);
+  const [swap, setSwap] = useState(false);
+  // Which half "me" plays on: from the player description, or the user's swap.
+  const meFar = /\bfar\b/i.test(`${report.players?.me.look ?? ""} ${playerDescription}`) !== swap;
+  const tl = useMemo(
+    () =>
+      baseTl && tracks
+        ? { ...baseTl, tracks: meFar ? { me: tracks.far, opponent: tracks.near } : { me: tracks.near, opponent: tracks.far } }
+        : baseTl,
+    [baseTl, tracks, meFar],
+  );
   if (!tl) {
     return (
       <section className="card">
@@ -242,13 +268,17 @@ function Result({ report, file, onPickFile }: { report: Report; file: File | nul
           <div><b>{tl.rallies.length}</b><span>rallies</span></div>
           <div><b>{shots.length ? Math.round(shots.reduce((a, b) => a + b, 0) / shots.length) : "–"}</b><span>avg shots</span></div>
           <div><b>{shots.length ? Math.max(...shots) : "–"}</b><span>longest</span></div>
-          <div><b>~{Math.round(me.speed.est_top_speed_kmh)}</b><span>your km/h</span></div>
+          {tl.tracks ? (
+            <div><b>{tl.tracks.me.stats.top}</b><span>your top km/h</span></div>
+          ) : (
+            <div><b>~{Math.round(me.speed.est_top_speed_kmh)}</b><span>your km/h (est.)</span></div>
+          )}
         </div>
         {!report.video_quality.usable && <p className="note">⚠️ {report.video_quality.note}</p>}
       </section>
 
       {file ? (
-        <AnnotatedPlayer file={file} tl={tl} videoRef={videoRef} />
+        <AnnotatedPlayer file={file} tl={tl} videoRef={videoRef} trackKey={`${id}:${file.name}:${file.size}`} onTracks={setTracks} />
       ) : (
         <section className="card">
           <p><b>Your match view is on the video.</b> Score, rally stats, both players' moments and head-to-head panels play live on top of it.</p>
@@ -256,6 +286,34 @@ function Result({ report, file, onPickFile }: { report: Report; file: File | nul
             <input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && onPickFile(e.target.files[0])} />
             <span>Choose the same video to watch it</span>
           </label>
+        </section>
+      )}
+
+      {tl.tracks && (
+        <section className="card">
+          <h2>Measured movement</h2>
+          <div className="glance">
+            {(["me", "opponent"] as const).map((who) => {
+              const st = tl.tracks![who].stats;
+              const mv = tl.tracks![who].movements;
+              const fast = mv.filter((m) => m.band === "fast").length;
+              return (
+                <div key={who} className={`pl ${who === "me" ? "me" : "opp"}`}>
+                  <h3>{who === "me" ? "You" : "Opponent"}</h3>
+                  <div className="mstats">
+                    <div><b>{st.distance}</b><span>m covered</span></div>
+                    <div><b>{st.top}</b><span>top km/h</span></div>
+                    <div><b>{st.avgMoving}</b><span>avg km/h moving</span></div>
+                    <div><b>{mv.length ? Math.round((fast / mv.length) * 100) : 0}%</b><span>fast moves</span></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="muted small">
+            From on-device tracking ({tl.tracks.me.stats.coverage}% / {tl.tracks.opponent.stats.coverage}% of frames).{" "}
+            <button className="link" onClick={() => setSwap(!swap)}>Wrong player? Swap</button>
+          </p>
         </section>
       )}
 
@@ -332,26 +390,68 @@ function Result({ report, file, onPickFile }: { report: Report; file: File | nul
   );
 }
 
+type TrackState =
+  | { kind: "off" }
+  | { kind: "calibrate"; pts: Pt[] }
+  | { kind: "tracking"; progress: number }
+  | { kind: "ready" }
+  | { kind: "error"; message: string };
+
+const CORNER_HINT = ["far-left", "far-right", "near-right", "near-left"];
+
 function AnnotatedPlayer({
   file,
   tl,
   videoRef,
+  trackKey,
+  onTracks,
 }: {
   file: File;
   tl: Timeline;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  trackKey: string;
+  onTracks: (t: Tracks | null) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [url, setUrl] = useState<string>();
   const [exporting, setExporting] = useState<number | null>(null);
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [ts, setTs] = useState<TrackState>({ kind: "off" });
+  const calibRef = useRef<Pt[] | null>(null);
+  calibRef.current = ts.kind === "calibrate" ? ts.pts : null;
 
   useEffect(() => {
     const u = URL.createObjectURL(file);
     setUrl(u);
     return () => URL.revokeObjectURL(u);
   }, [file]);
+
+  // Reuse tracking already done for this video in this browser.
+  useEffect(() => {
+    let live = true;
+    import("./lib/track").then(({ loadTracks }) =>
+      loadTracks(trackKey).then((t) => {
+        if (live && t) {
+          onTracks(t);
+          setTs({ kind: "ready" });
+        }
+      }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [trackKey, onTracks]);
+
+  /** The video's letterboxed content box inside the stage, in CSS pixels. */
+  const contentBox = () => {
+    const v = videoRef.current!;
+    const r = v.getBoundingClientRect();
+    const scale = Math.min(r.width / v.videoWidth, r.height / v.videoHeight);
+    const vw = v.videoWidth * scale;
+    const vh = v.videoHeight * scale;
+    return { left: r.left + (r.width - vw) / 2, top: r.top + (r.height - vh) / 2, vw, vh };
+  };
 
   // Draw overlay in sync with playback.
   useEffect(() => {
@@ -374,7 +474,9 @@ function AnnotatedPlayer({
         const vh = v.videoHeight * scale;
         ctx.save();
         ctx.translate((w - vw) / 2, (h - vh) / 2);
-        drawOverlay(ctx, vw, vh, v.currentTime, tl, 0.85 * devicePixelRatio);
+        const pts = calibRef.current;
+        if (pts) drawCalibration(ctx, vw, vh, pts);
+        else drawOverlay(ctx, vw, vh, v.currentTime, tl, 0.85 * devicePixelRatio);
         ctx.restore();
       }
       raf = requestAnimationFrame(draw);
@@ -382,6 +484,37 @@ function AnnotatedPlayer({
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, [tl, videoRef]);
+
+  function startCalibration() {
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      if (v.currentTime < 1) v.currentTime = Math.min(5, (v.duration || 10) / 4); // a frame with the court in view
+    }
+    setTs({ kind: "calibrate", pts: [] });
+  }
+
+  async function onTap(e: React.PointerEvent) {
+    if (ts.kind !== "calibrate") return;
+    const b = contentBox();
+    const rx = (e.clientX - b.left) / b.vw;
+    const ry = (e.clientY - b.top) / b.vh;
+    if (rx < -0.05 || rx > 1.05 || ry < -0.05 || ry > 1.05) return; // well outside the picture
+    const clamp = (v: number) => Math.min(1, Math.max(0, v)); // corners can sit right on the frame edge
+    const pt = { x: clamp(rx), y: clamp(ry) };
+    const pts = [...ts.pts, pt];
+    if (pts.length < 4) return setTs({ kind: "calibrate", pts });
+    setTs({ kind: "tracking", progress: 0 });
+    try {
+      const { trackPlayers, saveTracks } = await import("./lib/track");
+      const tracks = await trackPlayers(file, pts as Corners, (p) => setTs({ kind: "tracking", progress: p }));
+      await saveTracks(trackKey, tracks);
+      onTracks(tracks);
+      setTs({ kind: "ready" });
+    } catch (e) {
+      setTs({ kind: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
 
   async function exportVideo() {
     setErr(null);
@@ -403,15 +536,65 @@ function AnnotatedPlayer({
     }
   }
 
+  const calibrating = ts.kind === "calibrate";
   return (
     <section className="card player">
       <div className="stage">
-        <video ref={videoRef} src={url} controls playsInline preload="metadata" />
+        <video ref={videoRef} src={url} controls={!calibrating} playsInline preload="metadata" />
         <canvas ref={canvasRef} aria-hidden />
+        {calibrating && <div className="tap" onPointerDown={onTap} />}
       </div>
+
+      {ts.kind === "off" && (
+        <div className="track-cta">
+          <div>
+            <b>Player rings &amp; live speed</b>
+            <p className="muted small">Tap the 4 court corners once; your phone then tracks both players (nothing is uploaded).</p>
+          </div>
+          <button className="primary" onClick={startCalibration}>
+            Track players
+          </button>
+        </div>
+      )}
+      {calibrating && (
+        <div className="track-cta">
+          <div>
+            <b>
+              Tap the <u>{CORNER_HINT[ts.pts.length]}</u> corner of the court ({ts.pts.length + 1}/4)
+            </b>
+            <p className="muted small">Use the outer lines. Far = across the net, near = closest to the camera.</p>
+          </div>
+          <div className="row tight">
+            {ts.pts.length > 0 && (
+              <button className="button ghost" onClick={() => setTs({ kind: "calibrate", pts: ts.pts.slice(0, -1) })}>
+                Undo
+              </button>
+            )}
+            <button className="button ghost" onClick={() => setTs({ kind: "off" })}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {ts.kind === "tracking" && (
+        <div className="track-cta">
+          <div style={{ flex: 1 }}>
+            <b>Tracking players… {Math.round(ts.progress * 100)}%</b>
+            <div className="bar"><span style={{ width: `${ts.progress * 100}%` }} /></div>
+            <p className="muted small">Runs on your device. Keep this tab open.</p>
+          </div>
+        </div>
+      )}
+      {ts.kind === "error" && (
+        <p className="note">
+          Tracking failed: {ts.message}{" "}
+          <button className="link" onClick={startCalibration}>Try again</button>
+        </p>
+      )}
+
       <div className="row">
         {exporting === null ? (
-          <button className="primary" onClick={exportVideo}>
+          <button className={ts.kind === "off" ? "button ghost wide" : "primary"} onClick={exportVideo}>
             ⬇ Get annotated video
           </button>
         ) : (
@@ -425,8 +608,40 @@ function AnnotatedPlayer({
           </a>
         )}
       </div>
+      {ts.kind === "ready" && (
+        <p className="muted small">
+          Rings and speeds are measured from the video.{" "}
+          <button className="link" onClick={startCalibration}>Re-mark court</button>
+        </p>
+      )}
       {err && <p className="note">Export failed: {err}</p>}
-      <p className="muted small">Rendering happens on your device and may take a few minutes for long videos.</p>
     </section>
   );
+}
+
+/** Calibration view: tapped corners and the court outline so far. */
+function drawCalibration(ctx: CanvasRenderingContext2D, w: number, h: number, pts: Pt[]) {
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillRect(0, 0, w, h);
+  const u = Math.max(1.2 * devicePixelRatio, w / 640);
+  ctx.strokeStyle = "#a3e635";
+  ctx.lineWidth = 3 * u;
+  ctx.beginPath();
+  pts.forEach((p, i) => (i ? ctx.lineTo(p.x * w, p.y * h) : ctx.moveTo(p.x * w, p.y * h)));
+  if (pts.length === 4) ctx.closePath();
+  ctx.stroke();
+  pts.forEach((p, i) => {
+    ctx.fillStyle = "#a3e635";
+    ctx.beginPath();
+    ctx.arc(p.x * w, p.y * h, 11 * u, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#0b0d12";
+    ctx.lineWidth = 2 * u;
+    ctx.stroke();
+    ctx.fillStyle = "#0b0d12";
+    ctx.font = `800 ${12 * u}px system-ui`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(i + 1), p.x * w, p.y * h);
+  });
 }

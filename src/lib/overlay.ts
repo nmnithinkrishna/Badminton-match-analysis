@@ -1,5 +1,6 @@
 import { RATINGS, SHOTS, ZONES, type Moment, type PlayerProfile, type Report } from "../../shared/report";
 import { fmt, toSeconds } from "../../shared/time";
+import { bandOf, positionAt, trailAt, type PlayerTrack } from "./track";
 
 export type TRally = {
   start: number;
@@ -20,6 +21,8 @@ export type Timeline = {
   moments: TMoment[];
   players: Report["players"];
   takeaways: { title: string; action: string }[];
+  /** Measured on-device player tracks, when the user has run tracking for this video. */
+  tracks?: { me: PlayerTrack; opponent: PlayerTrack };
 };
 
 export const BRAND = "CourtSense";
@@ -335,11 +338,16 @@ export function drawOverlay(ctx: Ctx, w: number, h: number, t: number, tl: Timel
   if (ended) pointBanner(ctx, compact ? 10 * u : w / 2, compact ? 10 * u : 44 * u, u, ended, compact);
   if (gap) drawPanel(ctx, w, h, u, t, tl, PANELS[gap.i % PANELS.length]);
 
+  // With tracking on, players are on screen: keep cards out of the bottom of the frame where the near player is.
+  const cardTop = tl.tracks ? (compact ? 54 * u : 40 * u) : undefined;
   if (t < INTRO_S && tl.headline) {
-    card(ctx, w, h, u, { accent: "#a78bfa", kicker: "Match summary", title: tl.headline });
+    card(ctx, w, h, u, { accent: "#a78bfa", kicker: "Match summary", title: tl.headline, top: cardTop });
   }
-  if (m && !(t < INTRO_S && tl.headline && m.t < INTRO_S)) {
+  // Tracked players: ring, live speed, trail, movement callout, and moments pinned to the player.
+  const pinned = tl.tracks ? drawPlayers(ctx, w, h, u, t, tl, gap ? undefined : m) : false;
+  if (m && !pinned && !(t < INTRO_S && tl.headline && m.t < INTRO_S)) {
     card(ctx, w, h, u, {
+      top: cardTop,
       accent: PLAYER_COLOR[m.player],
       kicker: `${PLAYER_NAME[m.player]} · ${KIND[m.kind]} · ${fmt(m.t)}`,
       title: m.label,
@@ -447,6 +455,148 @@ function compactScore(ctx: Ctx, w: number, u: number, t: number, tl: Timeline) {
   ctx.fillText(sub, x + 10 * u, y + 30 * u);
 }
 
+// ---------- Tracked players ----------
+
+const BAND_LABEL = { slow: "Slow", medium: "Medium", fast: "Fast" } as const;
+const BAND_COLOR = { slow: "#a1a1aa", medium: "#facc15", fast: "#4ade80" } as const;
+const MOVE_CALLOUT_S = 1.6;
+
+/** Returns true when the active moment was drawn as a bubble on its player (so no bottom card is needed). */
+function drawPlayers(ctx: Ctx, w: number, h: number, u: number, t: number, tl: Timeline, m: TMoment | undefined): boolean {
+  let pinned = false;
+  for (const who of ["opponent", "me"] as const) {
+    const track = tl.tracks![who];
+    const p = positionAt(track, t);
+    if (!p) continue;
+    const color = PLAYER_COLOR[who];
+    const px = p.x * w;
+    const py = p.y * h;
+    const bh = p.bh * h;
+
+    // Trail of the last ~1.2 s.
+    const trail = trailAt(track, t);
+    if (trail.length > 1) {
+      ctx.strokeStyle = color;
+      ctx.lineCap = "round";
+      for (let i = 1; i < trail.length; i++) {
+        ctx.globalAlpha = 0.15 + (0.6 * i) / trail.length;
+        ctx.lineWidth = (1.5 + (2.5 * i) / trail.length) * u;
+        ctx.beginPath();
+        ctx.moveTo(trail[i - 1].x * w, trail[i - 1].y * h);
+        ctx.lineTo(trail[i].x * w, trail[i].y * h);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Ring on the court around the feet.
+    const rx = Math.max(14 * u, bh * 0.34);
+    const ry = rx * 0.38;
+    ctx.fillStyle = color + "33";
+    ctx.beginPath();
+    ctx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3 * u;
+    ctx.stroke();
+
+    // Live speed tag above the head.
+    const band = bandOf(p.v);
+    const moving = p.v >= 5;
+    const headY = py - bh;
+    const tag = moving ? `${PLAYER_NAME[who]} · ${Math.round(p.v)} km/h` : PLAYER_NAME[who];
+    const tagY = Math.max(6 * u, headY - 30 * u);
+    const tagW = tagPill(ctx, px, tagY, u, tag, color, moving ? BAND_LABEL[band] : undefined, BAND_COLOR[band]);
+
+    // Movement just finished: distance, time and how fast.
+    const mv = track.movements.find((x) => t >= x.end && t <= x.end + MOVE_CALLOUT_S);
+    let nextY = tagY + 26 * u;
+    if (mv) {
+      const text = `${mv.distance.toFixed(1)} m in ${(mv.end - mv.start).toFixed(1)} s · ${BAND_LABEL[mv.band]}`;
+      tagPill(ctx, px, nextY, u, text, "rgba(10,10,14,0.8)", undefined, BAND_COLOR[mv.band], BAND_COLOR[mv.band]);
+      nextY += 26 * u;
+    }
+
+    // Gemini moment for this player as a speech bubble pinned to them.
+    if (m && m.player === who) {
+      bubble(ctx, w, px, Math.max(tagY, 6 * u), u, m, color, tagW);
+      pinned = true;
+    }
+  }
+  return pinned;
+}
+
+/** Centered pill at (cx, y). Optional trailing badge (e.g. "Fast"). Returns its width. */
+function tagPill(ctx: Ctx, cx: number, y: number, u: number, text: string, bg: string, badge?: string, badgeColor?: string, textColor = "#fff") {
+  ctx.font = `800 ${12 * u}px ${FONT}`;
+  const tw = ctx.measureText(text).width;
+  ctx.font = `800 ${10 * u}px ${FONT}`;
+  const bw = badge ? ctx.measureText(badge).width + 12 * u : 0;
+  const wid = tw + 20 * u + (badge ? bw + 6 * u : 0);
+  const x = cx - wid / 2;
+  ctx.fillStyle = bg;
+  roundRect(ctx, x, y, wid, 22 * u, 11 * u);
+  ctx.fill();
+  ctx.fillStyle = textColor;
+  ctx.font = `800 ${12 * u}px ${FONT}`;
+  ctx.fillText(text, x + 10 * u, y + 11 * u);
+  if (badge) {
+    const bx = x + 10 * u + tw + 6 * u;
+    ctx.fillStyle = "rgba(10,10,14,0.85)";
+    roundRect(ctx, bx, y + 4 * u, bw, 14 * u, 7 * u);
+    ctx.fill();
+    ctx.fillStyle = badgeColor ?? "#fff";
+    ctx.font = `800 ${10 * u}px ${FONT}`;
+    ctx.fillText(badge, bx + 6 * u, y + 11 * u);
+  }
+  return wid;
+}
+
+/** Speech bubble above a player's tag: "✓ Quick net kill" plus shot/speed chips. */
+function bubble(ctx: Ctx, w: number, px: number, tagY: number, u: number, m: TMoment, color: string, _tagW: number) {
+  const title = `${KIND[m.kind].split(" ")[0]} ${m.label}`;
+  const chips = [m.shot ? cap(m.shot) : "", m.speed !== undefined ? `speed ${m.speed}/10` : ""].filter(Boolean).join(" · ");
+  ctx.font = `800 ${14 * u}px ${FONT}`;
+  const lines = wrap(ctx, title, 230 * u, 2);
+  const tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  ctx.font = `600 ${11 * u}px ${FONT}`;
+  const cw = chips ? ctx.measureText(chips).width : 0;
+  const bw = Math.max(tw, cw) + 24 * u;
+  const bh = 14 * u + lines.length * 18 * u + (chips ? 16 * u : 0);
+  let y = tagY - bh - 12 * u;
+  const below = y < 4 * u;
+  if (below) y = tagY + 30 * u; // no room above: hang the bubble below the tag
+  const x = Math.min(w - bw - 6 * u, Math.max(6 * u, px - bw / 2));
+  ctx.fillStyle = "rgba(10,10,14,0.88)";
+  roundRect(ctx, x, y, bw, bh, 10 * u);
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2 * u;
+  ctx.stroke();
+  // Pointer towards the player.
+  const ax = Math.min(x + bw - 14 * u, Math.max(x + 14 * u, px));
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (below) {
+    ctx.moveTo(ax - 7 * u, y);
+    ctx.lineTo(ax + 7 * u, y);
+    ctx.lineTo(ax, y - 8 * u);
+  } else {
+    ctx.moveTo(ax - 7 * u, y + bh);
+    ctx.lineTo(ax + 7 * u, y + bh);
+    ctx.lineTo(ax, y + bh + 8 * u);
+  }
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = `800 ${14 * u}px ${FONT}`;
+  lines.forEach((l, i) => ctx.fillText(l, x + 12 * u, y + 7 * u + 9 * u + i * 18 * u));
+  if (chips) {
+    ctx.fillStyle = color;
+    ctx.font = `600 ${11 * u}px ${FONT}`;
+    ctx.fillText(chips, x + 12 * u, y + bh - 12 * u);
+  }
+}
+
 type CardInput = {
   accent: string;
   kicker: string;
@@ -455,11 +605,13 @@ type CardInput = {
   shot?: string;
   speed?: number;
   zone?: string;
+  /** Draw at the top instead of the bottom (keeps the near player's ring visible when tracking is on). */
+  top?: number;
 };
 
 function card(ctx: Ctx, w: number, h: number, u: number, c: CardInput) {
   const pad = 12 * u;
-  const maxW = Math.min(w - 20 * u, 560 * u);
+  const maxW = Math.min(w - 20 * u, (c.top !== undefined ? 340 : 560) * u);
   const hasCourt = !!c.zone;
   const courtW = hasCourt ? 46 * u : 0;
   const textW = maxW - pad * 2 - 6 * u - (hasCourt ? courtW + 12 * u : 0);
@@ -472,8 +624,8 @@ function card(ctx: Ctx, w: number, h: number, u: number, c: CardInput) {
   const hasChips = !!c.shot || c.speed !== undefined;
   const textH = 14 * u + titleLines.length * titleSize * 1.25 + detailLines.length * detailSize * 1.35 + (hasChips ? 24 * u : 0);
   const height = pad * 2 + Math.max(textH, hasCourt ? courtW * 1.3 + 10 * u : 0);
-  const x = (w - maxW) / 2;
-  const y = h - height - 12 * u;
+  const x = c.top !== undefined && w / u >= 560 ? 10 * u : (w - maxW) / 2;
+  const y = c.top !== undefined ? c.top : h - height - 12 * u;
 
   ctx.fillStyle = "rgba(10,10,14,0.8)";
   roundRect(ctx, x, y, maxW, height, 12 * u);

@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "pnpm build && wrangler deploy",
     "typecheck": "wrangler types --strict-vars=false && tsc -b",
     "test": "vitest run",
     "db:migrate:local": "wrangler d1 migrations apply courtsense --local",
@@ -14,9 +14,13 @@
     "types": "wrangler types --strict-vars=false",
     "mock:gemini": "node scripts/mock-gemini.mjs",
     "smoke": "scripts/smoke.sh",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "vendor": "node scripts/vendor-mediapipe.mjs",
+    "predev": "node scripts/vendor-mediapipe.mjs",
+    "prebuild": "node scripts/vendor-mediapipe.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.1.1",
     "hono": "^4.13.16",
     "mediabunny": "^1.65.0",
     "react": "^19.3.1",

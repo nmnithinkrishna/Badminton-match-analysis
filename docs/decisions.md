@@ -45,3 +45,16 @@ Facts checked against official docs on 2026-11-03.
   court zone), and one stats panel per gap between rallies (rotating through 6). Portrait phones get a compact layout.
 - You = blue `#3987e5`, opponent = orange `#d95926` everywhere; the pair passes the colour-blind checks on both themes.
 - Old v1 reports show an "older report, run a new analysis" message instead of the match view.
+
+## On-device player tracking (2026-11-05)
+
+- Owner wanted a ring around each player with their real movement speed while the video plays. Gemini sees ~1 frame/s
+  and can't do that, so tracking runs in the browser: MediaPipe Pose Landmarker (lite), self-hosted under
+  `/mediapipe` (copied/downloaded by `scripts/vendor-mediapipe.mjs`, not committed).
+- User taps the 4 outer court corners once → homography to metres (13.4 × 6.1 m). Each half is cropped and upscaled
+  so the small far player is detected. 8 samples/s, glitch rejection (>1 m off the local median, >32 km/h),
+  median+mean smoothing, speed over ±2 samples. Movement = ≥0.4 s above 5 km/h; band slow <6, medium <11, fast ≥11 km/h.
+- GPU vs CPU delegate is benchmarked on the device and the faster one used (emulated WebGL was 16× slower than CPU).
+- Tracks are cached in IndexedDB per analysis + file; nothing is uploaded. Which half is "me" comes from the player
+  description ("far" → far half), with a Swap button.
+- Not yet validated on real badminton footage (only a tennis clip with a single player); thresholds may need tuning.
