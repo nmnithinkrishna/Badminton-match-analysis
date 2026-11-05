@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "courtsense",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "2aaef6ac-ae0c-425e-9c0d-ef0c69a853f2",
       "migrations_dir": "migrations"
     }
   ],
