@@ -18,7 +18,7 @@ Facts checked against official docs on 2026-11-03.
 7. **`generateContent` (stable) rather than the beta Interactions API**, with `responseJsonSchema` generated from
    the Zod schema, validated again with Zod; one repair retry, then a salvaged low-confidence partial report.
 8. **Model:** `gemini-3.8-flash`, fallback `gemini-3.5-flash-lite` on 429. Free-tier RPM/RPD are only shown in AI Studio.
-9. **Media resolution LOW** (~100 tokens per second of video). A 10-min match ≈ 60k input tokens.
+9. ~~Media resolution LOW~~ → **MEDIUM** (2026-11-05, owner's call) for shot-level detail on both players.
 
 ## Open items for the owner
 
@@ -34,3 +34,14 @@ Facts checked against official docs on 2026-11-03.
   the final upload response **only if the resumable session was started with an `Origin` header**. Without it the
   bytes upload but the browser sees a CORS error and would fall back to the proxy for nothing. The Worker now forwards
   the browser's `Origin` when opening the session, and the mock copies this behaviour so e2e catches a regression.
+
+## Report v2: match view for both players (2026-11-05)
+
+- Owner feedback on the first real 7-min match: annotations too thin, page too wordy. Wanted both players analysed
+  like a match report, player speed, graphics over text, and **most insights live on the video**.
+- **Speed is a Gemini estimate** (owner chose this over on-device pose tracking): a 1-10 rating, a level and a rough
+  top speed in km/h, always labelled AI-estimated. Measured speed would need court calibration + pose tracking.
+- On the video: estimated score, rally shot count and movement bars, point banner, moment cards (player, shot, speed,
+  court zone), and one stats panel per gap between rallies (rotating through 6). Portrait phones get a compact layout.
+- You = blue `#3987e5`, opponent = orange `#d95926` everywhere; the pair passes the colour-blind checks on both themes.
+- Old v1 reports show an "older report, run a new analysis" message instead of the match view.

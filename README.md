@@ -1,7 +1,9 @@
 # CourtSense — core engine
 
-Upload a badminton singles match video → Gemini analyses it → you get your video back with AI coaching
-notes burned in, plus a short report (3 takeaways, strengths, weaknesses, drills, estimated rallies).
+Upload a badminton singles match video → Gemini analyses **both players** → you get your video back as a match view:
+live estimated score, rally shot counts, movement intensity, a "point" banner, moment cards for both players (shot,
+speed, court zone) and broadcast-style stats panels between rallies (head to head, speed, shot mix, court coverage,
+momentum, takeaways). The page itself stays short: score, 3 takeaways, drills.
 
 AI-estimated coaching feedback, not measured analytics.
 
@@ -63,11 +65,11 @@ pnpm deploy
 |---|---|---|
 | `GEMINI_MODEL` | `gemini-3.8-flash` | primary model |
 | `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash-lite` | used when the primary returns 429 or 5xx |
-| `MEDIA_RESOLUTION` | `MEDIA_RESOLUTION_LOW` | ~100 tokens/s of video; cheaper and fits free quota |
+| `MEDIA_RESOLUTION` | `MEDIA_RESOLUTION_MEDIUM` | more detail per frame for shot-level analysis of both players |
 | `MAX_UPLOAD_MB` | `500` | per video |
 | `MAX_DURATION_S` | `900` | 15 min |
 | `DAILY_CAP` | `15` | analyses per UTC day (protects free Gemini quota) |
 | `PAUSED` | `false` | kill switch for new analyses |
 | `GEMINI_API_KEY` | secret | never exposed to the browser |
 
-Prompt lives in `worker/prompts/v1.ts` (`PROMPT_VERSION` is stored on every job, with model and token counts).
+Prompt lives in `worker/prompts/v2.ts`, report format in `shared/report.ts` (`schema_version: 2`) (`PROMPT_VERSION` is stored on every job, with model and token counts).

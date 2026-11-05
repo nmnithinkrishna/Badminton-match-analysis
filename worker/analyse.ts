@@ -1,6 +1,6 @@
-import { ReportSchema, reportJsonSchema, type Report } from "../shared/report";
+import { RATINGS, ReportSchema, reportJsonSchema, SHOTS, ZONES, type Report } from "../shared/report";
 import { GeminiError, generateJson, type GeminiConfig, type GeminiFile } from "./gemini";
-import { buildPrompt, PROMPT_VERSION } from "./prompts/v1";
+import { buildPrompt, PROMPT_VERSION } from "./prompts/v2";
 
 export { PROMPT_VERSION };
 
@@ -103,18 +103,22 @@ export function salvage(raw: unknown): Report {
     .filter((r) => r.success)
     .map((r) => r.data)
     .slice(0, 3);
+  // Arrays of items: keep the items that validate on their own.
+  const items = <T>(k: "rallies" | "moments", item: { safeParse: (v: unknown) => { success: boolean; data?: T } }) =>
+    (Array.isArray(obj[k]) ? (obj[k] as unknown[]) : [])
+      .map((v) => item.safeParse(v))
+      .filter((r) => r.success)
+      .map((r) => r.data as T);
   return {
-    schema_version: 1,
+    schema_version: 2,
     summary: pick("summary", {
       headline: "Partial analysis",
       overall_note: "The AI could only produce part of the report for this video.",
     }),
     video_quality: pick("video_quality", { usable: false, note: "Could not assess." }),
-    rallies: pick("rallies", []),
-    moments: pick("moments", []),
-    strengths: pick("strengths", []),
-    weaknesses: pick("weaknesses", []),
-    patterns: pick("patterns", []),
+    players: pick("players", { me: emptyPlayer(), opponent: emptyPlayer() }),
+    rallies: items<Report["rallies"][number]>("rallies", shape.rallies.element),
+    moments: items<Report["moments"][number]>("moments", shape.moments.element),
     takeaways: takeaways as Report["takeaways"],
     drills: pick("drills", []),
     limitations: [
@@ -122,5 +126,18 @@ export function salvage(raw: unknown): Report {
       "Parts of the AI output were incomplete, so this is a partial report.",
     ],
     confidence_overall: "low",
+  };
+}
+
+function emptyPlayer(): Report["players"]["me"] {
+  const flat = <K extends string>(keys: readonly K[], v: number) => Object.fromEntries(keys.map((k) => [k, v])) as Record<K, number>;
+  return {
+    look: "",
+    ratings: flat(RATINGS, 5),
+    speed: { level: "moderate", est_top_speed_kmh: 0, note: "Not assessed." },
+    court_coverage: flat(ZONES, 0),
+    shot_mix: flat(SHOTS, 0),
+    strengths: ["Not assessed"],
+    work_on: ["Not assessed"],
   };
 }

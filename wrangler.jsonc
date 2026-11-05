@@ -21,7 +21,7 @@
     "GEMINI_MODEL": "gemini-3.8-flash",
     "GEMINI_FALLBACK_MODEL": "gemini-3.5-flash-lite",
     "GEMINI_BASE_URL": "https://generativelanguage.googleapis.com",
-    "MEDIA_RESOLUTION": "MEDIA_RESOLUTION_LOW",
+    "MEDIA_RESOLUTION": "MEDIA_RESOLUTION_MEDIUM",
     "MAX_UPLOAD_MB": "500",
     "MAX_DURATION_S": "900",
     "DAILY_CAP": "15",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AnalysisState, Report } from "../shared/report";
-import { fmt, toSeconds } from "../shared/time";
+import { toSeconds } from "../shared/time";
 import { createAnalysis, getStatus, uploadVideo } from "./lib/api";
 import { BRAND, buildTimeline, drawOverlay, type Timeline } from "./lib/overlay";
 // The video toolkit is large; load it only when needed.
@@ -190,8 +190,16 @@ function Progress({ step, progress }: { step: string; progress?: number }) {
 }
 
 function Result({ report, file, onPickFile }: { report: Report; file: File | null; onPickFile: (f: File) => void }) {
-  const tl = useMemo(() => buildTimeline(report), [report]);
+  const tl = useMemo(() => (report.schema_version === 2 ? buildTimeline(report) : null), [report]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  if (!tl) {
+    return (
+      <section className="card">
+        <h2>Older report</h2>
+        <p className="muted">This analysis was made with an earlier version of {BRAND}. Run a new analysis to get the match view.</p>
+      </section>
+    );
+  }
   const seek = (ts: string) => {
     const v = videoRef.current;
     const s = toSeconds(ts);
@@ -210,13 +218,32 @@ function Result({ report, file, onPickFile }: { report: Report; file: File | nul
       ))}
     </span>
   );
+  const final = tl.rallies.at(-1)?.score ?? { me: 0, opponent: 0 };
+  const shots = tl.rallies.map((r) => r.shots);
+  const { me, opponent } = report.players;
 
   return (
     <>
-      <section className="card">
+      <section className="card hero">
         <p className="kicker">AI-estimated · confidence {report.confidence_overall}</p>
         <h1>{report.summary.headline}</h1>
-        <p>{report.summary.overall_note}</p>
+        <div className="score" aria-label={`Estimated rallies won: you ${final.me}, opponent ${final.opponent}`}>
+          <div className="side me">
+            <span>You</span>
+            <b>{final.me}</b>
+          </div>
+          <span className="dash">–</span>
+          <div className="side opp">
+            <b>{final.opponent}</b>
+            <span>Opponent</span>
+          </div>
+        </div>
+        <div className="stats">
+          <div><b>{tl.rallies.length}</b><span>rallies</span></div>
+          <div><b>{shots.length ? Math.round(shots.reduce((a, b) => a + b, 0) / shots.length) : "–"}</b><span>avg shots</span></div>
+          <div><b>{shots.length ? Math.max(...shots) : "–"}</b><span>longest</span></div>
+          <div><b>~{Math.round(me.speed.est_top_speed_kmh)}</b><span>your km/h</span></div>
+        </div>
         {!report.video_quality.usable && <p className="note">⚠️ {report.video_quality.note}</p>}
       </section>
 
@@ -224,107 +251,83 @@ function Result({ report, file, onPickFile }: { report: Report; file: File | nul
         <AnnotatedPlayer file={file} tl={tl} videoRef={videoRef} />
       ) : (
         <section className="card">
-          <p className="muted">Choose the same video again to watch it with the AI notes on it.</p>
+          <p><b>Your match view is on the video.</b> Score, rally stats, both players' moments and head-to-head panels play live on top of it.</p>
           <label className="drop">
             <input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && onPickFile(e.target.files[0])} />
-            <span>Select video</span>
+            <span>Choose the same video to watch it</span>
           </label>
         </section>
       )}
 
       <section className="card">
         <h2>Your 3 takeaways</h2>
-        <ol className="list">
-          {report.takeaways.map((t) => (
-            <li key={t.title}>
-              <b>{t.title}</b>
-              <p>{t.explanation}</p>
-              <Ev list={t.evidence} />
-            </li>
+        <div className="takeaways">
+          {report.takeaways.map((t, i) => (
+            <div key={t.title} className="tk">
+              <span className="n">{i + 1}</span>
+              <div>
+                <b>{t.title}</b>
+                <p>{t.action}</p>
+                <Ev list={t.evidence} />
+              </div>
+            </div>
           ))}
-        </ol>
+        </div>
       </section>
-
-      <div className="grid">
-        <section className="card">
-          <h2>Strengths</h2>
-          {report.strengths.map((s) => (
-            <div key={s.title} className="item">
-              <b>{s.title}</b>
-              <p>{s.explanation}</p>
-              <Ev list={s.evidence} />
-            </div>
-          ))}
-        </section>
-        <section className="card">
-          <h2>To work on</h2>
-          {report.weaknesses.map((s) => (
-            <div key={s.title} className="item">
-              <b>
-                {s.title} <span className={`sev ${s.severity}`}>{s.severity}</span>
-              </b>
-              <p>{s.explanation}</p>
-              <Ev list={s.evidence} />
-            </div>
-          ))}
-        </section>
-      </div>
-
-      {report.patterns.length > 0 && (
-        <section className="card">
-          <h2>Patterns</h2>
-          {report.patterns.map((s) => (
-            <div key={s.title} className="item">
-              <b>{s.title}</b>
-              <p>{s.explanation}</p>
-              <Ev list={s.evidence} />
-            </div>
-          ))}
-        </section>
-      )}
 
       <section className="card">
-        <h2>Drills</h2>
-        {report.drills.map((d) => (
-          <div key={d.name} className="item">
-            <b>{d.name}</b>
-            <p>{d.how_to}</p>
-            <p className="muted">Why: {d.why}</p>
-          </div>
-        ))}
+        <h2>At a glance</h2>
+        <div className="glance">
+          {([["me", me], ["opponent", opponent]] as const).map(([who, p]) => (
+            <div key={who} className={`pl ${who === "me" ? "me" : "opp"}`}>
+              <h3>{who === "me" ? "You" : "Opponent"}</h3>
+              <div className="tags">
+                {p.strengths.map((x) => <span key={x} className="tag good">✓ {x}</span>)}
+                {p.work_on.map((x) => <span key={x} className="tag work">! {x}</span>)}
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
-      {report.rallies.length > 0 && (
+      {report.drills.length > 0 && (
         <section className="card">
-          <h2>Rallies (estimated)</h2>
-          <ul className="rallies">
-            {report.rallies.map((r, i) => (
-              <li key={i}>
-                <button className="chip" onClick={() => seek(r.start)}>
-                  ▶ {r.start}–{r.end}
-                </button>
-                <span className={`win ${r.estimated_winner}`}>
-                  {r.estimated_winner === "me" ? "You" : r.estimated_winner === "opponent" ? "Opponent" : "Unclear"}
-                </span>
-                <span className="muted">{r.note}</span>
-              </li>
-            ))}
-          </ul>
+          <h2>Drills</h2>
+          {report.drills.map((d) => (
+            <div key={d.name} className="drill">
+              <b>{d.name}</b> <span className="tag work">{d.fixes}</span>
+              <p className="muted">{d.how_to}</p>
+            </div>
+          ))}
         </section>
       )}
 
-      <section className="card notice">
-        <h2>About this report</h2>
+      <details className="card">
+        <summary>All rallies ({tl.rallies.length})</summary>
+        <ul className="rallies">
+          {report.rallies.map((r, i) => (
+            <li key={i}>
+              <button className="chip" onClick={() => seek(r.start)}>▶ {r.start}</button>
+              <span className={`win ${r.winner}`}>
+                {r.winner === "me" ? "You" : r.winner === "opponent" ? "Opponent" : "Unclear"}
+              </span>
+              <span className="muted">~{r.shots} shots · {r.note}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      <details className="card notice">
+        <summary>About this report</summary>
         <p className="muted">
-          This is AI-estimated coaching feedback from sampled video frames, not measured analytics. Rally times and
-          winners are estimates.
+          AI-estimated from sampled video frames, not measured. Ratings, speeds, shot counts and rally winners are estimates.
         </p>
         <ul>
           {report.limitations.map((l) => (
             <li key={l}>{l}</li>
           ))}
         </ul>
-      </section>
+      </details>
     </>
   );
 }
@@ -371,7 +374,7 @@ function AnnotatedPlayer({
         const vh = v.videoHeight * scale;
         ctx.save();
         ctx.translate((w - vw) / 2, (h - vh) / 2);
-        drawOverlay(ctx, vw, vh, v.currentTime, tl);
+        drawOverlay(ctx, vw, vh, v.currentTime, tl, 0.85 * devicePixelRatio);
         ctx.restore();
       }
       raf = requestAnimationFrame(draw);
@@ -424,7 +427,6 @@ function AnnotatedPlayer({
       </div>
       {err && <p className="note">Export failed: {err}</p>}
       <p className="muted small">Rendering happens on your device and may take a few minutes for long videos.</p>
-      <p className="muted small">Moments: {tl.moments.map((m) => fmt(m.t)).join(" · ") || "none"}</p>
     </section>
   );
 }

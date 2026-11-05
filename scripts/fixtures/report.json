@@ -1,41 +1,253 @@
 {
-  "schema_version": 1,
-  "summary": {
-    "headline": "Solid defence, now turn more rallies into attacks",
-    "overall_note": "You moved well to the back court and kept the shuttle in play. Most lost rallies came from short lifts to the mid-court that let your opponent smash."
+ "schema_version": 2,
+ "summary": {
+  "headline": "Opponent pressured your backhand; your net game won points",
+  "overall_note": "You won the net battles but short lifts under pressure gave your opponent easy smashes."
+ },
+ "video_quality": {
+  "usable": true,
+  "note": "Full court visible from behind the baseline."
+ },
+ "players": {
+  "me": {
+   "look": "Blue shirt, near side",
+   "ratings": {
+    "speed": 7,
+    "footwork": 6,
+    "attack": 6,
+    "defence": 5,
+    "net_play": 8,
+    "consistency": 6
+   },
+   "speed": {
+    "level": "fast",
+    "est_top_speed_kmh": 16,
+    "note": "Quick to the net, slower moving back."
+   },
+   "court_coverage": {
+    "front_left": 22,
+    "front_right": 18,
+    "mid_left": 14,
+    "mid_right": 12,
+    "back_left": 20,
+    "back_right": 14
+   },
+   "shot_mix": {
+    "clear": 24,
+    "smash": 12,
+    "drop": 14,
+    "net": 26,
+    "drive": 8,
+    "lift": 16
+   },
+   "strengths": [
+    "Tight net shots",
+    "Early net interception"
+   ],
+   "work_on": [
+    "Lift depth",
+    "Recovery to base"
+   ]
   },
-  "video_quality": { "usable": true, "note": "Full court visible from behind the baseline." },
-  "rallies": [
-    { "start": "0:02", "end": "0:14", "estimated_winner": "me", "note": "Deep clear forced a weak return, you finished at the net.", "confidence": "medium" },
-    { "start": "0:18", "end": "0:31", "estimated_winner": "opponent", "note": "Short lift was smashed down the line.", "confidence": "medium" },
-    { "start": "0:36", "end": "0:52", "estimated_winner": "unclear", "note": "Long exchange of clears; end not clearly visible.", "confidence": "low" }
-  ],
-  "moments": [
-    { "time": "0:05", "kind": "strength", "label": "Great deep clear to the back line", "detail": "The clear reached the back tramlines and pushed your opponent off balance." },
-    { "time": "0:12", "kind": "strength", "label": "Quick net kill", "detail": "You moved in early and met the shuttle high above the tape." },
-    { "time": "0:22", "kind": "weakness", "label": "Lift landed mid-court", "detail": "The lift was short, giving your opponent an easy smash." },
-    { "time": "0:28", "kind": "tip", "label": "Recover to base after each shot", "detail": "You stayed at the front after the drop; get back to the centre." },
-    { "time": "0:44", "kind": "weakness", "label": "Late split step", "detail": "You landed after your opponent hit, so the first step was slow." }
-  ],
-  "strengths": [
-    { "title": "Deep clears", "explanation": "Your clears regularly reach the back of the court, buying time.", "evidence": ["0:05", "0:40"] }
-  ],
-  "weaknesses": [
-    { "title": "Short lifts", "explanation": "Lifts under pressure often land mid-court and get attacked.", "severity": "major", "evidence": ["0:22"] },
-    { "title": "Recovery to base", "explanation": "You sometimes stay where you hit instead of returning to the centre.", "severity": "moderate", "evidence": ["0:28", "0:44"] }
-  ],
-  "patterns": [
-    { "title": "Opponent targets your backhand corner", "explanation": "Several rallies start with a push to your backhand rear court.", "evidence": ["0:19", "0:37"] }
-  ],
-  "takeaways": [
-    { "title": "Lift higher and deeper", "explanation": "When under pressure, aim lifts to the back line so you have time to recover.", "evidence": ["0:22"] },
-    { "title": "Return to base every shot", "explanation": "After each shot, take two steps back to the centre before the opponent hits.", "evidence": ["0:28"] },
-    { "title": "Split step on their hit", "explanation": "Time a small hop so you land as your opponent strikes the shuttle.", "evidence": ["0:44"] }
-  ],
-  "drills": [
-    { "name": "Deep lift ladder", "how_to": "Partner feeds net drops; lift each one to land behind the doubles long service line. 3 sets of 20.", "why": "Fixes short lifts." },
-    { "name": "Shadow footwork to base", "how_to": "Shadow 6 corners, touching the centre between each. 5 rounds of 30 seconds.", "why": "Builds the habit of recovering to base." }
-  ],
-  "limitations": ["Shuttle is hard to see in some frames, so rally ends are estimated."],
-  "confidence_overall": "medium"
+  "opponent": {
+   "look": "Red shirt, far side",
+   "ratings": {
+    "speed": 6,
+    "footwork": 7,
+    "attack": 8,
+    "defence": 6,
+    "net_play": 5,
+    "consistency": 7
+   },
+   "speed": {
+    "level": "moderate",
+    "est_top_speed_kmh": 14,
+    "note": "Steady movement, strong rear-court push."
+   },
+   "court_coverage": {
+    "front_left": 10,
+    "front_right": 12,
+    "mid_left": 18,
+    "mid_right": 16,
+    "back_left": 26,
+    "back_right": 18
+   },
+   "shot_mix": {
+    "clear": 20,
+    "smash": 22,
+    "drop": 18,
+    "net": 12,
+    "drive": 14,
+    "lift": 14
+   },
+   "strengths": [
+    "Steep smash",
+    "Targets backhand corner"
+   ],
+   "work_on": [
+    "Net touch"
+   ]
+  }
+ },
+ "rallies": [
+  {
+   "start": "0:02",
+   "end": "0:10",
+   "winner": "me",
+   "shots": 9,
+   "ended_by": "winner",
+   "final_shot": "net",
+   "intensity": {
+    "me": 6,
+    "opponent": 7
+   },
+   "note": "Deep clear then net kill.",
+   "confidence": "medium"
+  },
+  {
+   "start": "0:18",
+   "end": "0:31",
+   "winner": "opponent",
+   "shots": 11,
+   "ended_by": "winner",
+   "final_shot": "smash",
+   "intensity": {
+    "me": 8,
+    "opponent": 5
+   },
+   "note": "Short lift smashed down the line.",
+   "confidence": "medium"
+  },
+  {
+   "start": "0:36",
+   "end": "0:52",
+   "winner": "unclear",
+   "shots": 15,
+   "ended_by": "unclear",
+   "final_shot": "unknown",
+   "intensity": {
+    "me": 7,
+    "opponent": 7
+   },
+   "note": "Long clear exchange, end not visible.",
+   "confidence": "low"
+  }
+ ],
+ "moments": [
+  {
+   "time": "0:05",
+   "player": "me",
+   "kind": "strength",
+   "shot": "clear",
+   "zone": "back_left",
+   "speed": 6,
+   "label": "Deep clear to back line",
+   "detail": "Pushed your opponent off balance."
+  },
+  {
+   "time": "0:07",
+   "player": "opponent",
+   "kind": "weakness",
+   "shot": "lift",
+   "zone": "front_right",
+   "speed": 5,
+   "label": "Weak lift under pressure",
+   "detail": "Late to the net, lifted short."
+  },
+  {
+   "time": "0:09",
+   "player": "me",
+   "kind": "strength",
+   "shot": "net",
+   "zone": "front_left",
+   "speed": 8,
+   "label": "Quick net kill",
+   "detail": "Met the shuttle high above the tape."
+  },
+  {
+   "time": "0:20",
+   "player": "opponent",
+   "kind": "strength",
+   "shot": "drive",
+   "zone": "mid_right",
+   "label": "Fast drive to backhand",
+   "detail": "Targets your weaker side."
+  },
+  {
+   "time": "0:22",
+   "player": "me",
+   "kind": "weakness",
+   "shot": "lift",
+   "zone": "back_left",
+   "speed": 4,
+   "label": "Lift landed mid-court",
+   "detail": "Short lift gave an easy smash."
+  },
+  {
+   "time": "0:27",
+   "player": "opponent",
+   "kind": "strength",
+   "shot": "smash",
+   "zone": "mid_left",
+   "speed": 7,
+   "label": "Steep smash down the line",
+   "detail": "Punished the short lift."
+  },
+  {
+   "time": "0:40",
+   "player": "both",
+   "kind": "tip",
+   "label": "Long clear exchange",
+   "detail": "Both waiting for a short reply."
+  },
+  {
+   "time": "0:44",
+   "player": "me",
+   "kind": "weakness",
+   "zone": "mid_right",
+   "speed": 3,
+   "label": "Late split step",
+   "detail": "First step was slow."
+  }
+ ],
+ "takeaways": [
+  {
+   "title": "Lift to the back line",
+   "action": "Aim lifts above your opponent's reach, landing near the back line.",
+   "evidence": [
+    "0:22",
+    "0:27"
+   ]
+  },
+  {
+   "title": "Split step on their hit",
+   "action": "Land your split step exactly as your opponent hits.",
+   "evidence": [
+    "0:44"
+   ]
+  },
+  {
+   "title": "Keep attacking the net",
+   "action": "Follow every drop in; your net kills win points.",
+   "evidence": [
+    "0:09"
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "name": "Deep lift ladder",
+   "how_to": "Partner drops to the net, you lift past a line 1 m from the back.",
+   "fixes": "Short lifts"
+  },
+  {
+   "name": "Split-step shadow",
+   "how_to": "Partner calls corners as they mime a hit; split step, move, recover.",
+   "fixes": "Late first step"
+  }
+ ],
+ "limitations": [
+  "One fixed camera; shuttle hard to see on fast smashes."
+ ],
+ "confidence_overall": "medium"
 }

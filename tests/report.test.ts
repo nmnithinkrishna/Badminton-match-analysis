@@ -33,13 +33,29 @@ describe("report schema", () => {
   });
 });
 
+describe("report schema v2", () => {
+  it("rejects ratings outside 1-10", () => {
+    const r = JSON.parse(fixture);
+    r.players.opponent.ratings.speed = 11;
+    expect(ReportSchema.safeParse(r).success).toBe(false);
+  });
+
+  it("keeps valid rallies when one rally is malformed", () => {
+    const raw = JSON.parse(fixture);
+    raw.rallies[1].shots = "lots";
+    const s = salvage(raw);
+    expect(s.rallies).toHaveLength(2);
+    expect(s.moments).toHaveLength(raw.moments.length);
+  });
+});
+
 describe("parseAndValidate / salvage", () => {
   it("validates good output", () => {
     expect(parseAndValidate(fixture).ok).toBe(true);
   });
 
   it("reports readable errors for bad output", () => {
-    const r = parseAndValidate(JSON.stringify({ schema_version: 1 }));
+    const r = parseAndValidate(JSON.stringify({ schema_version: 2 }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("summary");
   });
@@ -55,6 +71,7 @@ describe("parseAndValidate / salvage", () => {
     const s = salvage(raw);
     expect(s.confidence_overall).toBe("low");
     expect(s.drills).toEqual([]);
+    expect(s.players.me.ratings.speed).toBe(raw.players.me.ratings.speed);
     expect(s.takeaways).toHaveLength(1);
     expect(s.summary.headline).toBe(raw.summary.headline);
     expect(s.limitations.at(-1)).toMatch(/partial/);
