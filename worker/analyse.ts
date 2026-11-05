@@ -21,7 +21,7 @@ export async function analyse(
   opts: {
     file: GeminiFile;
     playerDescription: string;
-    models: string[]; // primary first, then fallbacks used on 429
+    models: string[]; // primary first, then fallbacks used on 429 / overload
     mediaResolution: string;
     language?: string;
   },
@@ -39,8 +39,9 @@ export async function analyse(
         return await generateJson(cfg, { model, file: opts.file, prompt, schema, mediaResolution: opts.mediaResolution });
       } catch (e) {
         last = e;
-        // Only fall through to the next model when this one is out of quota.
-        if (!(e instanceof GeminiError && e.status === 429)) throw e;
+        // Fall through to the next model when this one is out of quota (429) or overloaded / timing out (5xx).
+        // A 4xx like 400 means our request is wrong, so another model won't help.
+        if (!(e instanceof GeminiError && (e.status === 429 || e.status >= 500))) throw e;
       }
     }
     throw last;

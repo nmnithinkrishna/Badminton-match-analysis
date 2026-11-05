@@ -22,7 +22,7 @@ Browser                                   Worker (Hono, Cloudflare)             
 - The API key stays in the Worker. The browser only gets a one-time upload session URL.
 - If the direct upload is refused, the browser falls back to `PUT /api/analyses/:id/upload` (streamed through the Worker, ≤100 MB).
 - We never store the video. Gemini deletes files after 48 h; we delete it as soon as the report is saved or the job fails.
-- 429/5xx from Gemini → automatic retries with exponential backoff, UI shows "in the queue". On 429 the fallback model is tried.
+- 429/5xx from Gemini → automatic retries with exponential backoff, UI shows "in the queue". On 429 or 5xx (e.g. 503 "high demand") the fallback model is tried.
 
 ## Run locally (no API key needed)
 
@@ -62,7 +62,7 @@ pnpm deploy
 | Var | Default | Meaning |
 |---|---|---|
 | `GEMINI_MODEL` | `gemini-3.8-flash` | primary model |
-| `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash-lite` | used when the primary returns 429 |
+| `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash-lite` | used when the primary returns 429 or 5xx |
 | `MEDIA_RESOLUTION` | `MEDIA_RESOLUTION_LOW` | ~100 tokens/s of video; cheaper and fits free quota |
 | `MAX_UPLOAD_MB` | `500` | per video |
 | `MAX_DURATION_S` | `900` | 15 min |
